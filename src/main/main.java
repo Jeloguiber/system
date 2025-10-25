@@ -9,8 +9,7 @@ import java.util.Scanner;
 
 public class main {
 
-    // --- Helper Methods ---
-
+    
     public static void viewStudents(config conf) {
         String query = "SELECT s_id, s_name, s_gender FROM tbl_student";
         String[] headers = {"s_ID", "s_Name", "s_Gender"};
@@ -18,46 +17,33 @@ public class main {
         conf.viewRecords(query, headers, columns);
     }
     
-    /**
-     * Retrieves the maximum (most recent) v_id from tbl_violation.
-     * This is crucial for linking the new record to tbl_records after insertion.
-     */
+    
     private static int getLatestViolationId(config con) {
         String qry = "SELECT MAX(v_id) AS last_id FROM tbl_violation";
         List<Map<String, Object>> result = con.fetchRecords(qry);
-        // The check below handles cases where the table is empty (MAX returns null) or the record failed to insert.
+        
         if (!result.isEmpty() && result.get(0).get("last_id") instanceof Number) {
             return ((Number) result.get(0).get("last_id")).intValue();
         }
         return -1; 
     }
     
-    // --- Violation Management Functions ---
     
-    /**
-     * Retrieves and displays ALL violation records by joining the split tables.
-     * Used by Admin and Teacher.
-     */
     public static void viewViolations(config conf) {
-        // T1: tbl_violation (details & confrontation date)
-        // T2: tbl_records (record date)
-        // NOTE: T1.v_type is now selected and displayed.
+        
         String query = "SELECT T1.v_id, T3.s_name, T1.v_desc, T1.v_type, T1.v_severity, T1.v_penalty, T2.r_date, T1.v_date_confronted, T4.u_name AS Recorded_By " +
                         "FROM tbl_violation T1 " +
                         "JOIN tbl_records T2 ON T1.v_id = T2.v_id " + 
                         "JOIN tbl_student T3 ON T1.s_id = T3.s_id " + 
                         "JOIN tbl_user T4 ON T1.u_id = T4.u_id";     
         
-        // UPDATED: Added "Type" to headers and "v_type" to columns
+        
         String[] headers = {"V_ID", "Student Name", "Description", "Type", "Severity", "Penalty", "Recorded Date", "Confront Date", "Recorded By"};
         String[] columns = {"v_id", "s_name", "v_desc", "v_type", "v_severity", "v_penalty", "r_date", "v_date_confronted", "Recorded_By"};
         conf.viewRecords(query, headers, columns);
     }
     
-    /**
-     * Handles the process of adding a record, split between tbl_violation and tbl_records.
-     * This function is used by the Teacher.
-     */
+    
     public static void addViolation(config con, Scanner sc, int teacherId) {
         System.out.println("\n--- ADD NEW VIOLATION RECORD ---");
         
@@ -84,10 +70,10 @@ public class main {
         System.out.print("Enter Violation Description (v_desc): ");
         String vDesc = sc.nextLine();
         
-        // NEW: Get Violation Type Input
+        
         System.out.print("Enter Violation Type (v_type, e.g., Academic, Behavioral): ");
         String vType = sc.nextLine();
-        // END NEW
+       
 
         System.out.print("Enter Violation Severity (e.g., Low, Medium, High): ");
         String vSeverity = sc.nextLine();
@@ -99,27 +85,26 @@ public class main {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
         String recordedDate = now.format(formatter);
         
-        // 1. Insert details (with v_date_confronted = NULL) into tbl_violation
-        // UPDATED: Added v_type to the column list
+        
         String sqlInsertViolation = "INSERT INTO tbl_violation (s_id, u_id, v_desc, v_type, v_penalty, v_severity, v_date_confronted) VALUES (?, ?, ?, ?, ?, ?, NULL)";
-        // UPDATED: Added vType to the parameters
+        
         con.addRecord(sqlInsertViolation, sId, teacherId, vDesc, vType, vPenalty, vSeverity);
         
-        // 2. Retrieve the new v_id (Crucial link step)
+        
         int newVId = getLatestViolationId(con);
         
         if (newVId > 0) {
-            // 3. Insert record log (only v_id and r_date) into tbl_records
+            
             String sqlInsertRecord = "INSERT INTO tbl_records (v_id, r_date) VALUES (?, ?)";
             con.addRecord(sqlInsertRecord, newVId, recordedDate);
             System.out.println("Violation record added successfully with V_ID: " + newVId);
         } else {
-            // This error occurs if the previous con.addRecord failed due to the missing columns
+            
             System.err.println("CRITICAL ERROR: Failed to retrieve new V_ID for record logging.");
         }
     }
     
-    // --- Shared Functions (Original/Non-Violation Related) ---
+    
     
     public static void viewUsers(config conf) {
         String Query = "SELECT * FROM tbl_user";
@@ -136,8 +121,7 @@ public class main {
     }
 
     public static void viewUnconfrontedViolations(config conf) {
-        // Selects records where the confrontation date is NULL from tbl_violation
-        // NOTE: T1.v_type is now selected and displayed.
+        
         String query = "SELECT T1.v_id, T3.s_name, T1.v_desc, T1.v_type, T1.v_severity, T1.v_penalty, T2.r_date, T4.u_name AS Recorded_By " +
                         "FROM tbl_violation T1 " +
                         "JOIN tbl_records T2 ON T1.v_id = T2.v_id " + 
@@ -145,7 +129,7 @@ public class main {
                         "JOIN tbl_user T4 ON T1.u_id = T4.u_id " + 
                         "WHERE T1.v_date_confronted IS NULL";
         
-        // UPDATED: Added "Type" to headers and "v_type" to columns
+        
         String[] headers = {"V_ID", "Student Name", "Description", "Type", "Severity", "Penalty", "Recorded Date", "Recorded By"};
         String[] columns = {"v_id", "s_name", "v_desc", "v_type", "v_severity", "v_penalty", "r_date", "Recorded_By"};
         
@@ -182,7 +166,7 @@ public class main {
         con.updateRecord(sqlUpdate, confrontDate, vId);
     }
 
-    // --- Main method ---
+    
 
     public static void main(String[] args) {
         config con = new config();
@@ -252,7 +236,7 @@ public class main {
                                             con.updateRecord(sql, "Approved", ids);
                                             break;
                                         
-                                        case 2: // Add Student
+                                        case 2: 
                                             System.out.print("Enter Student Name: ");
                                             String sName = sc.next();
                                             System.out.print("Enter Student Gender (Male/Female/Other): ");
@@ -262,11 +246,11 @@ public class main {
                                             con.addRecord(sqlInsertStudent, sName, sGender, userId); 
                                             break;
 
-                                        case 3: // View Students
+                                        case 3: 
                                             viewStudents(con);
                                             break;
                                             
-                                        case 4: // View Violations
+                                        case 4: 
                                             viewViolations(con);
                                             break;
 
@@ -317,23 +301,23 @@ public class main {
                                     sc.nextLine();
 
                                     switch (option) {
-                                        case 1: // Add Student
+                                        case 1: 
                                             System.out.print("Enter Student Name: ");
                                             String name = sc.next();
                                             System.out.print("Enter Student Gender (Male/Female/Other): ");
                                             String gender = sc.next();
                                             
-                                            // Using Counselor's userId as the FK
+                                            
                                             String sqlInsert = "INSERT INTO tbl_student (s_name, s_gender, u_id) VALUES(?,?,?)";
                                             con.addRecord(sqlInsert, name, gender, userId); 
                                             break;
 
-                                        case 2: // View Students 
+                                        case 2: 
                                             viewStudents(con);
                                             break;
 
-                                        case 3: // Update Student
-                                            viewStudents(con); // Show students first
+                                        case 3: 
+                                            viewStudents(con); 
                                             System.out.print("Enter Student ID to Update: ");
                                             int idUpdate = sc.nextInt();
                                             sc.nextLine();
@@ -346,13 +330,13 @@ public class main {
                                             con.updateRecord(qryUpdate, nname, ngender, idUpdate);
                                             break;
 
-                                        case 4: // Delete Student
-                                            viewStudents(con); // Show students first
+                                        case 4: 
+                                            viewStudents(con); 
                                             System.out.print("Enter Student ID to Delete: ");
                                             int idDelete = sc.nextInt();
                                             sc.nextLine();
                                             
-                                            // Check for dependent records (Violations) before deleting a student
+                                           
                                             String checkQry = "SELECT COUNT(*) AS count FROM tbl_violation WHERE s_id = ?";
                                             List<Map<String, Object>> countResult = con.fetchRecords(checkQry, idDelete);
                                             Number countNumber = (Number) countResult.get(0).get("count");
@@ -367,15 +351,15 @@ public class main {
                                             con.deleteRecord(qryDelete, idDelete);
                                             break;
                                             
-                                        case 5: // View All Violation Records
+                                        case 5: 
                                             viewViolations(con);
                                             break;
 
-                                        case 6: // Update Violation Record (Mark Confronted Date on tbl_violation)
+                                        case 6: 
                                             updateViolation(con, sc);
                                             break;
 
-                                        case 7: // Logout
+                                        case 7: 
                                             System.out.println("Logged out successfully!");
                                             break;
 
